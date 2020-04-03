@@ -1,7 +1,10 @@
 const _ = require('lodash');
 const fetch = require('node-fetch');
 const cheerio = require('cheerio');
-var stringify = require('csv-stringify');
+const stringify = require('csv-stringify');
+const parse = require('date-fns/parse');
+const toDate = require('date-fns/toDate');
+const format = require('date-fns/format');
 
 function checkStatus(res) {
 	if (res.ok) {
@@ -39,7 +42,6 @@ const COLS = [
 
 function getCaData(callback) {
   // TODO - cache results, check if the data is actually new somehow?
-  //
   fetch(WIKI_URL)
   	.then(res => res.text())
   	.then((body) => {
@@ -53,20 +55,27 @@ function toArr(list) {
 
 function parseCaTable($, table, callback) {
   let rows = $(table).find('tr');
-  let dataRows = $(rows).slice(2, rows.length);
+  let dataRows = $(rows).slice(2, (rows.length-6));
   let dataTableArr = [];
 
   dataRows.each((i, row) => {
     let _r = toArr($(row).children());
-
-    let _cells = _r.map((cell) => {
+    let _cells = _r.map((cell, ii) => {
       let _t = $(cell).text().trim();
-      return _t || "n\\a";
+      if (ii === 0) {
+        // the date column.
+        let _parsed = parse(_t, 'MMM d', new Date(2020, 0, 1));
+        let _d = toDate(_parsed);
+        // 2019-12-31
+        // console.log(_t, _d);
+        _t = format(_d, 'Y-LL-dd');
+      }
+      return _t || "0";
     });
     dataTableArr[i] = _.zipObject(COLS, _.slice(_cells, 0, (_cells.length-1)));
   });
   // we chop 6 rows off the end of the array because there are footer rows on WP
-  callback(null, _.slice(dataTableArr, 0, (dataTableArr.length - 6)));
+  callback(null, _.slice(dataTableArr, 0, dataTableArr.length));
 }
 
 module.exports.fetchData = getCaData;
@@ -89,7 +98,7 @@ if (require.main === module) {
         columns: COLS
       },
       (err, result) => {
-        if (err) throw err;  
+        if (err) throw err;
         console.log(result);
       });
     });
