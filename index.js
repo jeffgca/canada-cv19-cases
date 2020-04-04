@@ -69,8 +69,11 @@ function parseCaTable($, table, callback) {
         // 2019-12-31
         // console.log(_t, _d);
         _t = format(_d, 'Y-LL-dd');
+      } else {
+        // make sure it's an int instead oif like 409[n 3]
+        _t = parseInt(_t) || 0;
       }
-      return _t || "0";
+      return _t || 0;
     });
     dataTableArr[i] = _.zipObject(COLS, _.slice(_cells, 0, (_cells.length-1)));
   });
